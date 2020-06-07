@@ -94,9 +94,11 @@ void DNFFmpeg::_prepare() {
             return;
         }
 
+        //单位
+        AVRational time_base = stream->time_base;
         //音频
         if (codecpar->codec_type == AVMEDIA_TYPE_AUDIO){  //0
-            audioChannel = new AudioChannel(i,context);
+            audioChannel = new AudioChannel(i,context,time_base);
         } else if (codecpar->codec_type == AVMEDIA_TYPE_VIDEO){//视频
             //1
             //帧率：单位时间内 需要显示多少个图像
@@ -105,7 +107,7 @@ void DNFFmpeg::_prepare() {
 
             int fps = av_q2d(frame_rate);
 
-            videoChannel = new VideoChannel(i,context,fps);
+            videoChannel = new VideoChannel(i,context,time_base,fps);
             videoChannel->setRenderCallback(callback);
         }
 

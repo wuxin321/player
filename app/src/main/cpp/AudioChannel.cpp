@@ -28,7 +28,7 @@ AudioChannel::~AudioChannel() {
 }
 
 
-AudioChannel::AudioChannel(int id, AVCodecContext *avCodecContext) : BaseChannel(id,avCodecContext) {
+AudioChannel::AudioChannel(int id, AVCodecContext *avCodecContext,AVRational time_base) : BaseChannel(id,avCodecContext,time_base) {
     //44100个16位 44100*2
     //双声道
     out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
@@ -123,6 +123,9 @@ int AudioChannel::setPcm() {
     //获得 多少个16位数据44100*2（声道数） data_size = samples*44100*2
     //获得 有多少个字节
     data_size = samples*out_samplesize *out_channels;
+    //获取当前 frame的一个相对播放时间(相对播放时间)
+    //获得 相对播放这一段数据的秒数
+    clock = frame->pts * av_q2d(time_base);
 
     return data_size;
 }
