@@ -22,4 +22,13 @@
         app:layout_constraintStart_toStartOf="parent"
         android:onClick="start"/>
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="停止"
+        android:id="@+id/stop"
+        android:onClick="stop"
+        app:layout_constraintBaseline_toBaselineOf="@+id/start"
+        app:layout_constraintStart_toEndOf="@+id/start"/>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

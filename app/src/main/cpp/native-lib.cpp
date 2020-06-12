@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <string>
 #include "DNFFmpeg.h"
+#include "macro.h"
 #include <android/native_window_jni.h>
 #include <pthread.h>
 
@@ -12,6 +13,7 @@ DNFFmpeg *ffmpeg = 0;
 JavaVM *javaVm = 0;
 ANativeWindow *window = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+JavaCallHelp *help = 0;
 
 int JNI_OnLoad(JavaVM *vm, void *r) {
     javaVm = vm;
@@ -22,6 +24,7 @@ int JNI_OnLoad(JavaVM *vm, void *r) {
 void render(uint8_t *data,int linesize,int w,int h){
     pthread_mutex_lock(&mutex);
     if (!window){
+        pthread_mutex_unlock(&mutex);
         return;
     }
     //设置窗口属性
@@ -33,6 +36,7 @@ void render(uint8_t *data,int linesize,int w,int h){
     if (ANativeWindow_lock(window, &window_buffer, 0)) {
         ANativeWindow_release(window);
         window = 0;
+        pthread_mutex_unlock(&mutex);
         return;
     }
 //填充rgb数据给dst_data
@@ -45,6 +49,7 @@ void render(uint8_t *data,int linesize,int w,int h){
     }
     ANativeWindow_unlockAndPost(window);
     pthread_mutex_unlock(&mutex);
+
 }
 
 
@@ -54,7 +59,7 @@ JNIEXPORT void JNICALL
 Java_com_axin_player_DNPlayer_native_1prepare(JNIEnv *env, jobject instance, jstring data_source) {
 
     const char *dataSource = env->GetStringUTFChars(data_source, 0);
-    JavaCallHelp *help = new JavaCallHelp(javaVm,env,instance);
+    help = new JavaCallHelp(javaVm,env,instance);
     ffmpeg = new DNFFmpeg(help,dataSource);
     ffmpeg->setRenderCallback(render);
     ffmpeg->prepare();
@@ -65,7 +70,9 @@ Java_com_axin_player_DNPlayer_native_1prepare(JNIEnv *env, jobject instance, jst
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_axin_player_DNPlayer_native_1start(JNIEnv *env, jobject instance) {
-    ffmpeg->start();
+    if (ffmpeg){
+        ffmpeg->start();
+    }
 
 }
 
@@ -81,4 +88,25 @@ Java_com_axin_player_DNPlayer_native_1setSurface(JNIEnv *env, jobject thiz, jobj
     window = ANativeWindow_fromSurface(env,surface);
     pthread_mutex_unlock(&mutex);
 
+}extern "C"
+JNIEXPORT void JNICALL
+Java_com_axin_player_DNPlayer_native_1stop(JNIEnv *env, jobject thiz) {
+    if (ffmpeg){
+        ffmpeg->stop();
+    }
+    DELETE(help);
+
+
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_axin_player_DNPlayer_native_1release(JNIEnv *env, jobject thiz) {
+    pthread_mutex_lock(&mutex);
+    if(window){
+        //把老的释放
+        ANativeWindow_release(window);
+        window = 0;
+    }
+    pthread_mutex_unlock(&mutex);
 }

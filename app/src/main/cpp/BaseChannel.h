@@ -21,6 +21,12 @@ public:
     virtual ~BaseChannel(){
         frames.clear();
         packets.clear();
+        if (avCodecContext){
+            avcodec_close(avCodecContext);
+            avcodec_free_context(&avCodecContext);
+            avCodecContext = 0;
+
+        }
     }
     /**
      * 释放
@@ -42,6 +48,7 @@ public:
 
     //纯虚方法 相当于抽象方法
     virtual void play()=0;
+    virtual void stop()=0;
     int id;
     //编码数据包队列
     SafeQueue<AVPacket*> packets;

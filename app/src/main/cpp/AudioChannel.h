@@ -20,6 +20,7 @@ public:
     void play();
     void decode();
     void _play();
+    void stop();
     int setPcm();
 
 public:

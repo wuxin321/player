@@ -15,16 +15,20 @@ public class MainActivity extends AppCompatActivity {
     //rtmp://58.200.131.2:1935/livetv/hunantv
 
     private SurfaceView surfaceView;
+    private TextView stop;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         surfaceView = findViewById(R.id.surfaceView);
+        stop =findViewById(R.id.stop);
         dnPlayer = new DNPlayer();
         dnPlayer.setSurfaceView(surfaceView);
-        dnPlayer.setDataSource("rtmp://58.200.131.2:1935/livetv/hunantv");
-//        dnPlayer.setDataSource("http://hls1a.douyucdn.cn/live/288016rlols5_2000/playlist.m3u8?wsSecret=c70ce3b1bc7fb4c180206a0f4cc2699c&wsTime=1591254089&token=h5-douyu-0-288016-36ed2eaedf38a81d04b854c6430211a7&did=57c80714ddf676b079cda4ef00021531&origin=all&vhost=play2");
+        String url = getIntent().getStringExtra("url");
+        Log.e("xain","url="+url);
+        dnPlayer.setDataSource(url);
+//        dnPlayer.setDataSource("http://hls3a.douyucdn.cn/live/5324159vs7009686x/playlist.m3u8?wsSecret=bf50915b4b9d027d6e94433e07a211be&wsTime=1591608558&token=h5-douyu-0-5324159-56d7fa7236f6b767db97641c4d7deae1&did=57c80714ddf676b079cda4ef00021531&origin=ws&vhost=play4&mix=1&st=1");
         dnPlayer.setOnPrepareListener(new DNPlayer.OnPrepareListener() {
             @Override
             public void onPrepare() {
@@ -39,9 +43,26 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+
     }
 
     public void start(View view) {
         dnPlayer.prepare();
+    }
+
+    public void stop(View view) {
+        dnPlayer.stop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        dnPlayer.release();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        stop(stop);
     }
 }

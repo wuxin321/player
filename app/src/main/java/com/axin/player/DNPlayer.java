@@ -15,7 +15,6 @@ public class DNPlayer implements SurfaceHolder.Callback {
 
     private OnPrepareListener listener;
     private String dataSource;
-    private SurfaceView mSurfaceView;
     private SurfaceHolder holder;
 
     /**
@@ -30,7 +29,9 @@ public class DNPlayer implements SurfaceHolder.Callback {
      * @param surfaceView
      */
     public void setSurfaceView(SurfaceView surfaceView) {
-        mSurfaceView = surfaceView;
+       if (null != holder){
+           holder.removeCallback(this);
+       }
         holder = surfaceView.getHolder();
         holder.addCallback(this);
     }
@@ -63,13 +64,14 @@ public class DNPlayer implements SurfaceHolder.Callback {
      * 停止播放
      */
     public void stop(){
-
+        native_stop();
     }
 
 
     public void release(){
 
         holder.removeCallback(this);
+        native_release();
     }
 
     /**
@@ -113,6 +115,8 @@ public class DNPlayer implements SurfaceHolder.Callback {
 
     native void native_prepare(String dataSource);
     native void native_start();
+    native void native_stop();
+    native void native_release();
 
     native void native_setSurface(Surface surface);
 }

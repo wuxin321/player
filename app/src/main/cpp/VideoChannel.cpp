@@ -3,12 +3,14 @@
 //
 
 #include "VideoChannel.h"
+#include "macro.h"
 
 extern "C" {
 #include <libavutil/imgutils.h>
 #include <libavutil/time.h>
 }
 
+int fpt;
 
 void *decode_task(void *args) {
     VideoChannel *channel = static_cast<VideoChannel *>(args);
@@ -22,11 +24,48 @@ void *render_task(void *args) {
     return 0;
 }
 
+/**
+ * 丢包直到下一个关键帧
+ * @param q
+ */
+void dropAvPacket(queue<AVPacket*> &q){
+    while (!q.empty()){
+        AVPacket *packet = q.front();
+        //如果不属于I帧
+        if (packet->flags != AV_PKT_FLAG_KEY){
+            BaseChannel::releaseAvPacket(&packet);
+            q.pop();
+        } else{
+            break;
+        }
+    }
+}
+
+void dropAvFrame(queue<AVFrame*> &q){
+    double dif = 1.0/ fpt;
+    int num = 0.05 / dif;
+    if (num < 1){
+        num = 1;
+    }
+//    LOGE("num = %d,,dif=%f   ,,length=%d",num,dif,q.size());
+    while (!q.empty() && num > 0){
+        AVFrame *frame = q.front();
+        BaseChannel::releaseAVFrame(&frame);
+        q.pop();
+        num--;
+
+    }
+}
+
 
 VideoChannel::VideoChannel(int id, AVCodecContext *avCodecContext, AVRational time_base, int fps)
         : BaseChannel(id, avCodecContext, time_base) {
-
+    fpt = fps;
     this->fps = fps;
+    //用于 设置一个  同步操作  队列的一个函数指针
+
+    frames.setSyncHandle(dropAvFrame);
+
 }
 
 
@@ -130,6 +169,7 @@ void VideoChannel::render() {
         //真实需要的延时的时间
         double delays = frame_delays+extra_delay;
         if (!audioChannel) {
+            LOGE("audioChannel为null");
             av_usleep(delays * 1000000);
         } else {
 
@@ -142,13 +182,17 @@ void VideoChannel::render() {
                 //音视频相差的间隔
                 double  diff = clock - audioClock;
                 if (diff > 0){//表示视频比较快
+                    LOGE("视频快了%f",diff);
                    av_usleep((diff + delays)*1000000);
                 } else if (diff < 0){ //表示音频比较快
+                    LOGE("音频快了%f",diff);
                     //不睡了  快点赶上音频
                     //视频包挤压的太多了（丢包）
-                    if(fabs(diff) > 0.06){
+                    if(fabs(diff) > 0.05){
+                        releaseAVFrame(&avFrame);
                         //丢包
-
+                        frames.sync();
+                        continue;
                     }
 
                 }
@@ -163,8 +207,27 @@ void VideoChannel::render() {
     }
     av_freep(&dst_data[0]);
     releaseAVFrame(&avFrame);
+    isPlaying = 0;
+    sws_freeContext(swsContext);
+    swsContext = 0;
 }
 
 void VideoChannel::setRenderCallback(RenderFrameCallback callback) {
     this->callback = callback;
+}
+
+void VideoChannel::stop() {
+    isPlaying = 0;
+    frames.setWork(0);
+    packets.setWork(0);
+    if (pid_render){
+        pthread_join(pid_decode,0);
+    }
+    if (pid_render){
+        pthread_join(pid_render,0);
+    }
+
+
+
+
 }
